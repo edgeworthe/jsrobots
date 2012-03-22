@@ -28,6 +28,7 @@ if( ! this.initialized ) {
         }
     };
     this.attack = function() {
+        // TODO: stop firing in your own path, dimwit
         if( this.targetXY[0] && this.targetXY[0] != -1 ) {
             var xdiff = this.targetXY[0] - this.xloc;
             var ydiff = this.targetXY[1] - this.yloc;
@@ -48,7 +49,17 @@ if( ! this.initialized ) {
             // TODO: break out into separate function?
             this.targetXY[0] = Math.cos(this.scanDirection * (Math.PI/180)) * targetRange - this.xloc;
             this.targetXY[1] = Math.sin(this.scanDirection * (Math.PI/180)) * targetRange - this.yloc;
-
+            alert( ["Target found, calculating: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+            /* sample: 696, 158, 275, 332, and target was near 245, 260 
+            but instead we got -130.65981769246915,-396.2643896059766
+            later was:
+            -217.92503896462875,-281.268073000345,319,69,270,236
+            then:
+            -265.2794975239791,-226.90499796013316,274,39,268,188
+            then:
+            -100.76249745633231,-242.50126370923093,374,93,191,265
+            then:
+            -186.0370784747361,-49.57236715372835,477,97,142,136 */
         } else {
             this.scanDirection += 10;
             this.targetXY = [-1,-1];
