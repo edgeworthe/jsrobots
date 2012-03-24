@@ -27,47 +27,80 @@ if( ! this.initialized ) {
             }
         }
     };
+    this.wildfire = function() {
+        // Always Be Firing
+        // Downside: Sometimes Be Reloading at inopportune moments
+        if( ! this.targetXY[0] || this.targetXY[0] == -1 )
+            this.cannon( this.currentHeading + 135 + rand(90), 100 );
+    };
     this.attack = function() {
         // TODO: stop firing in your own path, dimwit
+        var haveFired = 0;
         if( this.targetXY[0] && this.targetXY[0] != -1 ) {
             var xdiff = this.targetXY[0] - this.xloc;
-            var ydiff = this.targetXY[1] - this.yloc;
+            var ydiff = this.yloc - this.targetXY[1];
+            // see http://www.mathsisfun.com/polar-cartesian-coordinates.html
             var corrective = 0;
-            if( xdiff < 0 ) {
+            if( ydiff < 0 ) {
                 corrective = 180;
             }
             if( ydiff == 0 ) {
-                ydiff = 0.0001; // avoid divide-by-zero NaN
+                ydiff = 0.000001; // avoid divide-by-zero NaN
             }
             this.scanDirection = Math.round(Math.atan(xdiff/ydiff) * 180/Math.PI + corrective);
         }
         var targetRange = this.scan( this.scanDirection, 10 );
         if( targetRange ) {
             if( targetRange <= 350 ) {
-                this.cannon( this.scanDirection, targetRange );
-            }
+                haveFired = this.cannon( this.scanDirection, targetRange );
+            } 
             // TODO: break out into separate function?
             /* 
-            TODO: needs fixing--after much investigation I think
-            I've found that using sin/cos on polar coordinates 
-            works only if your origin is on the positive X axis
-            and rotate counter-clockwise--jsrobots puts zero degrees at 
-            positive Y axis and goes clockwise!  So might need to
-            rejigger values slightly.
+            By moving origin to Y axis, you're 
+            essentially flipping the plane over and rotating counter-
+            clockwise by 90 degrees, so can we just swap X and Y coords?
+
+            major epiphany: 0,0 is NW corner, 499,499 SE, which is
+            direct opposite what I was modelling.  D'oh!  X axis is
+            okay to model same way, but Y axis we have to subtract
+            rather than add current location, then take absolute value.
+
+            TODO: fix divide-by-zero at modulus 90
             */
             scanRadians = this.scanDirection * (Math.PI/180);
-            this.targetXY[0] = Math.sin(scanRadians) * targetRange + this.xloc;
-            this.targetXY[1] = Math.cos(scanRadians) * targetRange + this.yloc;
+            this.targetXY[0] = Math.round(Math.sin(scanRadians) * targetRange + this.xloc);
+            this.targetXY[1] = Math.abs(Math.round(Math.cos(scanRadians) * targetRange - this.yloc));
+            this.targetFound = 2;
             if( !this.alerted ) {
-                alert( ["targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+                alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
                 this.alerted = 1;
             }
         } else {
-            this.scanDirection += 10;
-            this.targetXY = [-1,-1];
+            if( this.alerted ) {
+                // TODO: we tend to lose target immediately,
+                // with scanDirection being wrong.  fix atan above?
+                alert( ["LOST TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+                this.alerted = 0;
+            }
+            if( ! this.targetFound ) {
+                // TODO: adjust scanDirection based on our 
+                // current heading
+                this.scanDirection += 10;
+                // sometimes targeting is weird if > 360?
+                while( this.scanDirection >= 360 ) 
+                    this.scanDirection -= 360;
+                this.targetXY = [-1,-1];
+            } else {
+                this.targetFound -= 1;
+            }
         }
+        /* if( ! haveFired )
+            this.wildfire(); */
     };
     this.moveAround = function() {
+        // TODO: Consider more logic for avoiding other bots;
+        // we lose a lot of battles just from running into/over
+        // others.
         if( this.haveDriven == 0 ) {
             this.currentHeading = this.findPath();
             this.drive(this.currentHeading, this.drivePower);
@@ -79,6 +112,12 @@ if( ! this.initialized ) {
             this.haveDriven -= 1;
             this.drive(this.currentHeading,this.drivePower);
         }
+        // wall check
+        if( this.xloc > 450 || this.xloc < 50 ||
+            this.yloc > 450 || this.yloc < 50 ) {
+            this.haveDriven = 1;
+        }
+
     };
 
 
@@ -88,6 +127,7 @@ if( ! this.initialized ) {
     this.scanDirection = this.findPath();
     this.currentHeading = this.findPath();
     this.targetXY = [-1,-1];
+    this.targetFound = 0;
 
     this.initialized = 1;
 }
@@ -96,28 +136,15 @@ if( ! this.initialized ) {
 this.locate();
 this.attack();
 if( this.speed() == 0 && this.haveDriven != 0 ) {
-    // to work around the quick getaway bug, let's cheat.
+    // to work around the quick getaway bug, let's cheat
+    // by driving twice in a single iteration.
+    // TODO: figure out some way to stop cheating that
+    // still prevents getting trampled by Mosquito
+    // TODO: sometimes get hung up after collision with
+    // tower in center due to moveAround logic--instead
+    // flee to corner?
+    this.haveDriven = 0;
     this.drive(this.currentHeading, 0);
-    this.drive(this.currentHeading, this.drivePower);
-} else {
-    this.moveAround();
-}
-
-/* 
-MATH NOTES HERE
-
-0,0 and 50,0, 90 degrees, 50 range -- do we special-case %90==0?
-0,0 and 12,12, 45 degrees, 17 range
-
-sqrt(50*50+0*0)
-angle A + hypotenuse H given 
-cos A = X/H 
-sin A = Y/H
-tan A = X/Y (or Y/X?)
-target_x = cos(angle)* range - loc_x
-target_y = sin(angle)* range - loc_y
-A = atan(X/Y), if X < 0, add 180?
-http://www.w3schools.com/jsref/jsref_obj_math.asp
-radians = degrees * (pi/180)
-*/
+} 
+this.moveAround();
 
