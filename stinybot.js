@@ -1,10 +1,12 @@
 /*
 http://jsrobots.com/info
+stinybot!
 Drive around randomly in the middle and shoot at what you 
 can find.
 */
 
 if( ! this.initialized ) {
+    this.alertsOK = 0;
     this.locate = function() {
         this.xloc = this.loc_x();
         this.yloc = this.loc_y();
@@ -47,46 +49,41 @@ if( ! this.initialized ) {
             if( ydiff == 0 ) {
                 ydiff = 0.000001; // avoid divide-by-zero NaN
             }
-            this.scanDirection = Math.round(Math.atan(xdiff/ydiff) * 180/Math.PI + corrective);
+            this.scanDirection = Math.round(Math.atan(xdiff/ydiff) 
+                * 180/Math.PI + corrective);
         }
+        // TODO: adjust resolution if we have a known target?
         var targetRange = this.scan( this.scanDirection, 10 );
         if( targetRange ) {
             if( targetRange <= 350 ) {
                 haveFired = this.cannon( this.scanDirection, targetRange );
             } 
             // TODO: break out into separate function?
-            /* 
-            By moving origin to Y axis, you're 
-            essentially flipping the plane over and rotating counter-
-            clockwise by 90 degrees, so can we just swap X and Y coords?
-
-            major epiphany: 0,0 is NW corner, 499,499 SE, which is
-            direct opposite what I was modelling.  D'oh!  X axis is
-            okay to model same way, but Y axis we have to subtract
-            rather than add current location, then take absolute value.
-
-            TODO: fix divide-by-zero at modulus 90
-            */
+            // TODO: fix divide-by-zero at modulus 90 (still an issue?)
             scanRadians = this.scanDirection * (Math.PI/180);
-            this.targetXY[0] = Math.round(Math.sin(scanRadians) * targetRange + this.xloc);
-            this.targetXY[1] = Math.abs(Math.round(Math.cos(scanRadians) * targetRange - this.yloc));
+            this.targetXY[0] = Math.round(Math.sin(scanRadians) 
+                * targetRange + this.xloc);
+            this.targetXY[1] = Math.abs(Math.round(Math.cos(scanRadians) 
+                * targetRange - this.yloc));
+            // TODO: if values are outside the walls, adjust inward
             this.targetFound = 2;
-            if( !this.alerted ) {
-                //alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+            if( this.alertsOK && !this.alerted ) {
+                alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ", 
+                    this.targetXY, this.scanDirection, targetRange, 
+                    this.xloc, this.yloc ] );
                 this.alerted = 1;
             }
         } else {
-            if( this.alerted ) {
-                // TODO: we tend to lose target immediately,
-                // with scanDirection being wrong.  fix atan above?
-                //alert( ["LOST TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+            if( this.alertsOK && this.alerted ) {
+                alert( ["LOST TARGET: targetX,Y, scandir, range, mylocx,y: ", 
+                    this.targetXY, this.scanDirection, targetRange, 
+                    this.xloc, this.yloc ] );
                 this.alerted = 0;
             }
             if( ! this.targetFound ) {
                 // TODO: adjust scanDirection based on our 
-                // current heading
+                // current heading?
                 this.scanDirection += 10;
-                // sometimes targeting is weird if > 360?
                 while( this.scanDirection >= 360 ) 
                     this.scanDirection -= 360;
                 this.targetXY = [-1,-1];
@@ -94,13 +91,15 @@ if( ! this.initialized ) {
                 this.targetFound -= 1;
             }
         }
-        /* if( ! haveFired )
-            this.wildfire(); */
+        if( ! haveFired )
+            this.wildfire();
     };
     this.moveAround = function() {
         // TODO: Consider more logic for avoiding other bots;
         // we lose a lot of battles just from running into/over
         // others.
+        // TODO: consider retreating to corner when dmg reaches
+        // certain point to avoid Mosquitoes
         if( this.haveDriven == 0 ) {
             this.currentHeading = this.findPath();
             this.drive(this.currentHeading, this.drivePower);
