@@ -1,8 +1,7 @@
 /*
 http://jsrobots.com/info
-stinybot!
-Drive around randomly in the middle and shoot at what you 
-can find.
+followbot!
+Find targets and follow them.
 */
 
 if( ! this.initialized ) {
@@ -106,10 +105,7 @@ if( ! this.initialized ) {
             }
             if( ! this.targetFound ) {
                 // TODO: adjust scanDirection based on our 
-                // current heading?  Probably want to pick
-                // a direction that grabs us the widest
-                // swath of the playing field, yet not ignore
-                // corners, either.
+                // current heading?
                 this.scanDirection += 10;
                 while( this.scanDirection >= 360 ) 
                     this.scanDirection -= 360;
@@ -122,12 +118,9 @@ if( ! this.initialized ) {
             this.wildfire();
     };
 
-    this.moveAround = function() {
-        // TODO: Consider more logic for avoiding other bots;
-        // we lose a lot of battles just from running into/over
-        // others.
-        // TODO: consider retreating to corner when dmg reaches
-        // certain point to avoid Mosquitoes
+    this.pursue = function() {
+        // TODO: make it actually pursue instead of just a copy
+        // of stinybot's moveAround()
         if( this.haveDriven == 0 ) {
             this.currentHeading = this.pathFromClosestCorner();
             this.drive(this.currentHeading, this.drivePower);
@@ -153,24 +146,21 @@ if( ! this.initialized ) {
     this.targetFound = 0;
 
     this.scanDirection = this.pathFromClosestCorner();
-    this.currentHeading = this.pathFromClosestCorner();
+    // TODO: change to a headToCenter() function? different start place maybe?
+    this.currentHeading = this.cart2polar( this.xloc, this.yloc, 0,0 );
 
     this.initialized = 1;
 }
 
 this.locateSelf();
-this.attackSomething();
 if( this.speed() == 0 && this.haveDriven != 0 ) {
     // CHEAT: to work around the quick getaway bug, let's
     // drive twice in a single iteration like all the
     // sample bots do.
     // TODO: figure out some way to stop cheating that
     // still prevents getting trampled by Mosquito
-    // TODO: sometimes get hung up after collision with
-    // tower in center due to moveAround logic--instead
-    // flee to corner?
     this.haveDriven = 0;
     this.drive(this.currentHeading, 0);
 } 
-this.moveAround();
+this.pursue();
 
