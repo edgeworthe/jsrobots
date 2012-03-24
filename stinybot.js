@@ -72,14 +72,14 @@ if( ! this.initialized ) {
             this.targetXY[1] = Math.abs(Math.round(Math.cos(scanRadians) * targetRange - this.yloc));
             this.targetFound = 2;
             if( !this.alerted ) {
-                alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+                //alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
                 this.alerted = 1;
             }
         } else {
             if( this.alerted ) {
                 // TODO: we tend to lose target immediately,
                 // with scanDirection being wrong.  fix atan above?
-                alert( ["LOST TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
+                //alert( ["LOST TARGET: targetX,Y, scandir, range, mylocx,y: ", this.targetXY, this.scanDirection, targetRange, this.xloc, this.yloc ] );
                 this.alerted = 0;
             }
             if( ! this.targetFound ) {
