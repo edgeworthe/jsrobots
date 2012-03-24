@@ -132,7 +132,7 @@ if( ! this.initialized ) {
             this.haveDriven -= 1;
             this.drive(this.currentHeading,this.drivePower);
         }
-        if( this.nearWall( this.xloc, this.yloc ) 
+        if( this.nearWall( this.xloc, this.yloc ) )
             this.haveDriven = 1;
 
     };

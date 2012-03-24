@@ -87,13 +87,13 @@ if( ! this.initialized ) {
             if( targetRange <= 350 ) {
                 haveFired = this.cannon( this.scanDirection, targetRange );
             } 
-            this.targetXY = this.polar2cart( this.xloc, this.yloc, 
+            this.targetXY = this.polar2cart( this.xloc, this.yloc,
                 this.scanDirection, targetRange );
             // TODO: if values are outside the walls, adjust inward
             this.targetFound = 2;
             if( this.alertsOK && !this.alerted ) {
-                alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ", 
-                    this.targetXY, this.scanDirection, targetRange, 
+                alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ",
+                    this.targetXY, this.scanDirection, targetRange,
                     this.xloc, this.yloc ] );
                 this.alerted = 1;
             }
@@ -111,7 +111,7 @@ if( ! this.initialized ) {
                 // swath of the playing field, yet not ignore
                 // corners, either.
                 this.scanDirection += 10;
-                while( this.scanDirection >= 360 ) 
+                while( this.scanDirection >= 360 )
                     this.scanDirection -= 360;
                 this.targetXY = [-1,-1];
             } else {
@@ -139,7 +139,7 @@ if( ! this.initialized ) {
             this.haveDriven -= 1;
             this.drive(this.currentHeading,this.drivePower);
         }
-        if( this.nearWall( this.xloc, this.yloc ) 
+        if( this.nearWall( this.xloc, this.yloc ) )
             this.haveDriven = 1;
 
     };
@@ -171,6 +171,6 @@ if( this.speed() == 0 && this.haveDriven != 0 ) {
     // flee to corner?
     this.haveDriven = 0;
     this.drive(this.currentHeading, 0);
-} 
+}
 this.moveAround();
 
