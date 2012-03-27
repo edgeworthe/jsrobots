@@ -14,20 +14,23 @@ if( ! this.initialized ) {
     this.pathFromClosestCorner = function() {
         // TODO: better mathy way to do this?
         // 0-499, 249 = center
-        var randomVal = rand(90);
-        if( this.xloc < 250 ) {
-            if( this.yloc < 250 ) {
-                return randomVal + 90;
+        // TODO: prevent getting hung up in middle
+        var angle = rand(90);
+        var midpoint = 250;
+        if( this.xloc < midpoint ) {
+            if( this.yloc > midpoint ) {
+                angle += 0;
             } else {
-                return randomVal;
+                angle += 90;
             }
         } else {
-            if( this.yloc < 250 ) {
-                return randomVal + 180;
+            if( this.yloc < midpoint ) {
+                angle += 180;
             } else {
-                return randomVal + 270;
+                angle += 270;
             }
         }
+        return angle;
     };
     this.wildfire = function() {
         // Always Be Firing
@@ -48,7 +51,6 @@ if( ! this.initialized ) {
         if( ydiff == 0 ) {
             ydiff = 0.000001; // avoid divide-by-zero NaN
         }
-        // TODO: return range as well? we can get that from scan, tho
         return( Math.round(Math.atan(xdiff/ydiff) 
             * 180/Math.PI + corrective));
     };
@@ -63,10 +65,10 @@ if( ! this.initialized ) {
         return( [ targetX, targetY ] );
     };
     this.nearWall = function( x, y ) {
-        /* Return 1 if we're within 50 of wall, 0 otherwise */
+        /* Return 1 if we're within close to wall, 0 otherwise */
         var retVal = 0;
         // TODO: closer ok?
-        if( x > 450 || x < 50 || y > 450 || y < 50 ) {
+        if( x > 445 || x < 5 || y > 455 || y < 5 ) {
             retVal = 1;
         }
         return( retVal );
@@ -122,13 +124,13 @@ if( ! this.initialized ) {
             this.wildfire();
     };
 
-    this.moveAround = function() {
+    this.moveAroundRandomly = function() {
         // TODO: Consider more logic for avoiding other bots;
         // we lose a lot of battles just from running into/over
         // others.
         // TODO: consider retreating to corner when dmg reaches
         // certain point to avoid Mosquitoes
-        if( this.haveDriven == 0 ) {
+        if( this.haveDriven <= 0 ) {
             this.currentHeading = this.pathFromClosestCorner();
             this.drive(this.currentHeading, this.drivePower);
             this.haveDriven = rand(15) + 15;
@@ -142,6 +144,25 @@ if( ! this.initialized ) {
         if( this.nearWall( this.xloc, this.yloc ) )
             this.haveDriven = 1;
 
+    };
+    this.moveSpiral = function() {
+        /* move in spiral shape */
+        // TODO: move to corner upon initialization/spiral finish
+        // TODO: randomly determine spiraling direction
+        // TODO: once get close to middle, reset to random corner
+        // and start over
+    };
+    this.moveCircle = function() {
+        /* trace a circle within bounds of arena */
+        // TODO: move in a circle and change circle size after a
+        // certain number of revolutions.
+    };
+    this.yellowWallpaper = function() {
+        /* move around perimeter, very close to walls */
+        if( ! this.nearWall ) {
+            // TODO: move to a wall
+        } 
+        // TODO: move along walls
     };
 
 
@@ -158,6 +179,14 @@ if( ! this.initialized ) {
     this.initialized = 1;
 }
 
+// TODO: add logic for switching "modes"--e.g.:
+// - if we keep losing targets or too much time elapses, assume
+// they're moving really fast and switch to pursuit mode to close
+// distance.
+// - if the target shows up at the same spot each time, assume
+// it's stationary and circle it
+// - differentiate between collision damage and cannon damage?
+
 this.locateSelf();
 this.attackSomething();
 if( this.speed() == 0 && this.haveDriven != 0 ) {
@@ -167,10 +196,10 @@ if( this.speed() == 0 && this.haveDriven != 0 ) {
     // TODO: figure out some way to stop cheating that
     // still prevents getting trampled by Mosquito
     // TODO: sometimes get hung up after collision with
-    // tower in center due to moveAround logic--instead
+    // tower/twin in center due to moveAroundRandomly logic--instead
     // flee to corner?
     this.haveDriven = 0;
     this.drive(this.currentHeading, 0);
 }
-this.moveAround();
+this.moveAroundRandomly();
 
