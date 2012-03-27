@@ -11,6 +11,16 @@ if( ! this.initialized ) {
         this.xloc = this.loc_x();
         this.yloc = this.loc_y();
     };
+    this.checkDamage = function() {
+        // potential bug: if run this twice, might get misleading
+        // results
+        this.currentDamage = this.damage();
+        if( this.currentDamage != this.previousDamage )
+            this.underAttack = 1;
+        else
+            this.underAttack = 0;
+        this.previousDamage = this.currentDamage;
+    };
     this.pathFromClosestCorner = function() {
         // TODO: better mathy way to do this?
         // 0-499, 249 = center
@@ -68,9 +78,15 @@ if( ! this.initialized ) {
         /* Return 1 if we're within close to wall, 0 otherwise */
         var retVal = 0;
         // TODO: closer ok?
-        if( x > 445 || x < 5 || y > 455 || y < 5 ) {
+        if( x > 492 || x < 7 || y > 492 || y < 7 ) {
             retVal = 1;
         }
+        return( retVal );
+    };
+    this.nearMiddle = function( x, y ) {
+        var retVal = 0;
+        if( x < 300 && x > 200 && y < 300 && y > 200 )
+            retVal = 1;
         return( retVal );
     };
 
@@ -130,20 +146,14 @@ if( ! this.initialized ) {
         // others.
         // TODO: consider retreating to corner when dmg reaches
         // certain point to avoid Mosquitoes
-        if( this.haveDriven <= 0 ) {
+        if( this.haveDriven == 1 && this.nearWall( this.xloc, this.yloc ) ) {
             this.currentHeading = this.pathFromClosestCorner();
-            this.drive(this.currentHeading, this.drivePower);
-            this.haveDriven = rand(15) + 15;
-        } else if( this.haveDriven == 1 ) {
             this.drive( this.currentHeading, 0 );
-            this.haveDriven -= 1;
+            this.haveDriven = 0;
         } else {
-            this.haveDriven -= 1;
-            this.drive(this.currentHeading,this.drivePower);
-        }
-        if( this.nearWall( this.xloc, this.yloc ) )
+            this.drive(this.currentHeading, this.drivePower);
             this.haveDriven = 1;
-
+        }
     };
     this.moveSpiral = function() {
         /* move in spiral shape */
@@ -159,7 +169,7 @@ if( ! this.initialized ) {
     };
     this.yellowWallpaper = function() {
         /* move around perimeter, very close to walls */
-        if( ! this.nearWall ) {
+        if( ! this.nearWall( this.xloc, this.yloc ) ) {
             // TODO: move to a wall
         } 
         // TODO: move along walls
@@ -188,6 +198,8 @@ if( ! this.initialized ) {
 // - differentiate between collision damage and cannon damage?
 
 this.locateSelf();
+// TODO: no dmg check presently?
+this.checkDamage();
 this.attackSomething();
 if( this.speed() == 0 && this.haveDriven != 0 ) {
     // CHEAT: to work around the quick getaway bug, let's
@@ -198,7 +210,6 @@ if( this.speed() == 0 && this.haveDriven != 0 ) {
     // TODO: sometimes get hung up after collision with
     // tower/twin in center due to moveAroundRandomly logic--instead
     // flee to corner?
-    this.haveDriven = 0;
     this.drive(this.currentHeading, 0);
 }
 this.moveAroundRandomly();
