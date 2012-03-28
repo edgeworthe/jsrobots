@@ -45,7 +45,11 @@ if( ! this.initialized ) {
     this.wildfire = function() {
         // Always Be Firing
         // Downside: Sometimes Be Reloading at inopportune moments
-        if( ! this.targetXY[0] || this.targetXY[0] == -1 )
+        // TODO: nearWall() is false even if you're too close, so
+        // readjust to prevent shooting self from wall explosion.
+        if( ( ! this.targetXY[0] || this.targetXY[0] == -1 ) 
+            && ! this.nearWall( this.xloc, this.yloc ) 
+            && this.currentDamage < 40 )
             this.cannon( this.currentHeading + 135 + rand(90), 100 );
     };
     this.cart2polar = function( myX, myY, targetX, targetY ) {
@@ -102,6 +106,12 @@ if( ! this.initialized ) {
         if( targetRange ) {
             // TODO: adjust range outward slightly to accommodate
             // blast radius, target movement, and scan inaccuracy?
+            // TODO: consider altering this.currentHeading such
+            // that we're travelling at 90 degrees to the target,
+            // effectively circling them at range.  Problems with
+            // this: 1) might end up hitting wall, 2) need to
+            // stop and then take new heading, else we just grind
+            // to a halt.
             if( targetRange <= 350 ) {
                 haveFired = this.cannon( this.scanDirection, targetRange );
             } 
@@ -196,12 +206,16 @@ if( ! this.initialized ) {
 // - if the target shows up at the same spot each time, assume
 // it's stationary and circle it
 // - differentiate between collision damage and cannon damage?
+// TODO: consider adding an arena object for methods like
+// nearWall, nearCenter, outsideWalls, etc.
+// TODO: a lot of dmg taken from robot collisions; consider
+// hugging walls until take damage, then move to another wall.
 
 this.locateSelf();
 // TODO: no dmg check presently?
 this.checkDamage();
 this.attackSomething();
-if( this.speed() == 0 && this.haveDriven != 0 ) {
+if( this.speed() == 0 && this.haveDriven != 0 || this.underAttack ) {
     // CHEAT: to work around the quick getaway bug, let's
     // drive twice in a single iteration like all the
     // sample bots do.
@@ -210,6 +224,8 @@ if( this.speed() == 0 && this.haveDriven != 0 ) {
     // TODO: sometimes get hung up after collision with
     // tower/twin in center due to moveAroundRandomly logic--instead
     // flee to corner?
+    // TODO: potential bug where we get hung up on bot if collide
+    // near wall?  Hard to replicate, unfortunately.
     this.drive(this.currentHeading, 0);
 }
 this.moveAroundRandomly();
