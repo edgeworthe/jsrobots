@@ -13,12 +13,17 @@ if( ! this.initialized ) {
         this.yloc = this.loc_y();
     };
 
+    // TODO: keep track of where targets are showing up over time
+    // in order to have intelligence regarding number of
+    // opponents (if we see them moving more quickly than they
+    // should be able to) and/or movement strategies (always in
+    // same places, etc.)
     this.resetTarget = function() {
         this.targetXY = [-1,-1];
     };
 
-    this.noTargetLock = function() {
-        return this.targetXY[0] == -1;
+    this.haveTargetLock = function() {
+        return this.targetXY[0] != -1;
     };
 
     this.checkDamage = function() {
@@ -26,44 +31,68 @@ if( ! this.initialized ) {
         // results
         this.currentDamage = this.damage();
         if( this.currentDamage != this.previousDamage )
-            this.underAttack = 1;
-        else
-            this.underAttack = 0;
+            this.underAttack = 10;
+        else if( this.underAttack > 0 )
+            this.underAttack -= 1;
         this.previousDamage = this.currentDamage;
     };
 
+    this.whichQuadrant = function( x, y ) {
+        /* given x,y coords, return which quadrant those coords
+        are in, where the quadrants are set up as:
+        4 1
+        3 2 */
+        var midpoint = 250;
+        var quadrant = 0;
+        if( x > midpoint ) {
+            if( y < midpoint ) { quadrant = 1; }
+            else { quadrant = 2; }
+        } else {
+            if( y > midpoint ) { quadrant = 3; }
+            else { quadrant = 4; }
+        }
+        return( quadrant );
+        
+    };
     this.pathFromClosestCorner = function() {
         // TODO: better mathy way to do this?
         // 0-499, 249 = center
         var angle = rand(90);
-        var midpoint = 250;
-        if( this.xloc < midpoint ) {
-            if( this.yloc > midpoint ) {
-                angle += 0;
-            } else {
-                angle += 90;
-            }
-        } else {
-            if( this.yloc < midpoint ) {
-                angle += 180;
-            } else {
-                angle += 270;
-            }
+        switch( this.whichQuadrant( this.xloc, this.yloc ) ) {
+            case 1:
+            angle += 180; break;
+            case 2:
+            angle += 270; break;
+            case 3:
+            angle += 0; break;
+            case 4:
+            angle += 90; break;
+            default:
+            alert( "Bad quadrant value:", 
+                    this.whichQuadrant( this.xloc, this.yloc ) );
+            break;
         }
         return angle;
+    };
+    this.isOutsideArena = function( x, y ) {
+        // TODO: why does y<=0 here cause us to run against wall?
+        return( x <= 0 || x >= 499 || y <= 10 || y >= 499 );
     };
 
     this.wildfire = function() {
         // Always Be Firing
         // Downside: Sometimes Be Reloading at inopportune moments
+        var minXY = 10;
+        var maxXY = 499 - minXY;
         angle = this.currentHeading + 135 + rand(90);
         range = 100;
         xy = this.polar2cart( this.xloc, this.yloc, angle, range );
-        if( xy[0] < 0 || xy[1] < 0 || xy[0] > 499 || xy[1] > 499 ) {
+        if( xy[0] < minXY || xy[1] < minXY || 
+            xy[0] > maxXY || xy[1] > maxXY ) {
             // outside of arena, might hit self in blowback
             return;
         }
-        if( this.noTargetLock()
+        if( ! this.haveTargetLock()
             && ! this.nearWall( this.xloc, this.yloc ) )
             this.cannon( angle, range );
     };
@@ -103,7 +132,7 @@ if( ! this.initialized ) {
     this.nearWall = function( x, y ) {
         /* Return 1 if we're close to wall, 0 otherwise */
         var retVal = 0;
-        var dist = 8;
+        var dist = 18;
         // TODO: need to determine distance to point on the wall
         // where we'll strike it; right now we just use the
         // maximum dist to prevent colliding with wall when
@@ -133,11 +162,24 @@ if( ! this.initialized ) {
         // stop and then take new heading, else we just grind
         // to a halt.
         var haveFired = 0;
+        var minRange = 250 - this.iterations/100;
+        if( minRange < 50 )
+            minRange = 50;
         if( range <= 350 ) {
             haveFired = this.cannon( angle, range );
         } 
-        this.targetXY = this.polar2cart( this.xloc, this.yloc,
-            angle, range );
+        if( range <= 25 ) {
+            // edge away if we're too close in
+            this.circleHeading = this.circleHeading < 0 ? -135 : 135;
+        } else if( range <= minRange ) {
+            // move perpendicularly if we're within a good range
+            this.circleHeading = this.circleHeading < 0 ? -90 : 90;
+        } else {
+            // move in closer if we're too far away
+            this.circleHeading = this.circleHeading < 0 ? -45 : 45;
+        }
+        this.targetXY = 
+            this.polar2cart( this.xloc, this.yloc, angle, range );
         this.targetFound = 2;
         if( this.alertsOK && !this.alerted ) {
             alert( ["FOUND TARGET: targetX,Y, scandir, range, mylocx,y: ",
@@ -171,10 +213,8 @@ if( ! this.initialized ) {
 
     this.attackSomething = function() {
         // TODO: stop firing in your own path, dimwit
-        // TODO: long function, consider breaking up into smaller
-        // chunks, e.g. scan/fire/alert
         var haveFired = 0;
-        if( this.targetXY[0] && ! this.noTargetLock() ) {
+        if( this.targetXY[0] && this.haveTargetLock() ) {
             this.scanDirection = this.cart2polar( this.xloc, this.yloc,
                 this.targetXY[0], this.targetXY[1] );
         }
@@ -193,16 +233,29 @@ if( ! this.initialized ) {
     this.moveAroundRandomly = function() {
         // TODO: Consider more logic for avoiding other bots;
         // we lose a lot of battles just from running into/over
-        // others.
+        // others. Not moving seems to be a good advantage
+        // against some bots.  Hm.
         // TODO: consider retreating to corner when dmg reaches
         // certain point to avoid Mosquitoes
-        if( this.haveDriven == 1 && this.nearWall( this.xloc, this.yloc ) ) {
+        var initialHeading = this.currentHeading;
+        if( this.haveTargetLock() && ! this.underAttack ) {
+            // TODO: fix case where I'm at 0,250 and target is at
+            // 0,0 -- we get hung up currently there.
+            var circlingTarget = this.scanDirection + this.circleHeading;
+            if( Math.abs(circlingTarget - this.currentHeading) > 10 )
+                this.currentHeading = circlingTarget;
+        } 
+        // TODO: is 20 how far we travel in one iteration?
+        var destination = this.polar2cart( this.xloc, this.yloc, 
+            this.currentHeading, 25 );
+        if( this.isOutsideArena( destination[0], destination[1] ) ) {
             this.currentHeading = this.pathFromClosestCorner();
-            this.drive( this.currentHeading, 0 );
-            this.haveDriven = 0;
-        } else {
+            this.circleHeading *= -1;
+        } 
+        if( initialHeading == this.currentHeading ) {
             this.drive(this.currentHeading, this.drivePower);
-            this.haveDriven = 1;
+        } else {
+            this.drive(this.currentHeading, 49);
         }
     };
 
@@ -233,12 +286,13 @@ if( ! this.initialized ) {
     this.locateSelf();
 
     this.drivePower = 100;
-    this.haveDriven = 0; // incrementing boolean. hacky.
     this.resetTarget();
     this.targetFound = 0;
 
     this.scanDirection = this.pathFromClosestCorner();
     this.currentHeading = this.pathFromClosestCorner();
+    this.circleHeading = 90;
+    this.iterations = 0;
 
     this.initialized = 1;
 }
@@ -260,18 +314,19 @@ if( ! this.initialized ) {
 // itself.  Any way to handle that?  (One way: stop shooting
 // yourself at walls!)
 
+// TODO: change behavior based on iterations?
+this.iterations += 1;
 this.locateSelf();
 this.checkDamage();
 this.attackSomething();
-if( this.speed() == 0 && this.haveDriven != 0 || this.underAttack ) {
-    // CHEAT: to work around the quick getaway bug, let's
-    // drive twice in a single iteration like all the
-    // sample bots do.
-    // TODO: figure out some way to stop cheating that
-    // still prevents getting trampled by Mosquito
+if( this.speed() == 0 ) {
+    // CHEAT: to work around the quick getaway bug, let's drive
+    // twice in a single iteration like all the sample bots do.
+    // TODO: figure out some way to stop cheating that still
+    // prevents getting trampled by Mosquito
     // TODO: sometimes get hung up after collision with
-    // tower/twin in center due to moveAroundRandomly logic--instead
-    // flee to corner?
+    // tower/twin in center due to moveAroundRandomly
+    // logic--instead flee to corner?
     // TODO: potential bug where we get hung up on bot if collide
     // near wall?  Hard to replicate, unfortunately.
     this.drive(this.currentHeading, 0);
